@@ -180,11 +180,16 @@
                     )
 
                     .sort((a, b) => {
+                        // players playing together at the top
                         const countDiff = (b.player_count ?? 0) - (a.player_count ?? 0);
                         if (countDiff !== 0) return countDiff;
+                        
+                        // so that servers are together
+                        const srvAndPlayerNameA = a.domain + a.player;
+                        const srvAndPlayerNameB = b.domain + b.player;
 
-                        // secondary sort: player name (A → Z)
-                        return a.player.localeCompare(b.player, undefined, { sensitivity: "base" });
+                        // sort within server by player name
+                        return srvAndPlayerNameA.localeCompare(srvAndPlayerNameB, undefined, { sensitivity: "base" });
                     })
 
                 if (!rows.length) {
