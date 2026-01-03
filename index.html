@@ -113,9 +113,9 @@
         }
 
         .copy-btn {
+            font-family: inherit;
             margin-left: 8px;
             padding: 4px 8px;
-            font-size: 11px;
             border-radius: 6px;
             border: 1px solid rgba(147, 197, 253, .25);
             background: rgba(147, 197, 253, .12);
@@ -155,6 +155,16 @@
                 font-size: 13px;
             }
 
+            .server-table td:nth-child(1),
+            .server-table td:nth-child(2) {
+                white-space: normal;
+                /* allow wrapping */
+                overflow-wrap: anywhere;
+                /* wrap long words/names */
+                word-break: break-word;
+                /* fallback */
+            }
+
             /* Hide IP/Port column (4th column) on mobile */
             .server-table th:nth-child(4),
             .server-table td:nth-child(4) {
@@ -190,10 +200,11 @@
 
         .more-btn {
             display: none;
-            margin-left: 8px;
+            margin-left: 14px;
             padding: 4px 8px;
-            font-size: 11px;
-            font-weight: 600;
+            /* font-size: 11px;
+            font-weight: 600; */
+            font-family: inherit;
             border-radius: 6px;
             border: 1px solid rgba(147, 197, 253, .25);
             background: rgba(147, 197, 253, .12);
@@ -204,6 +215,10 @@
         .more-btn:hover {
             background: rgba(147, 197, 253, .2);
             border-color: rgba(147, 197, 253, .4);
+        }
+
+        .nowrap-cell {
+            white-space: nowrap;
         }
 
         /* Mobile only */
@@ -298,10 +313,10 @@
                 <tr>
                   <td>${escapeHtml(r.player) + " (" + r.admin + ")"}</td>
                   <td>${escapeHtml(r.map)}</td>
-                  <td>${escapeHtml(getServerName(r.domain))}</td>
+                  <td class="nowrap-cell">${escapeHtml(getServerName(r.domain))}</td>
 
                   <!-- Desktop shows IP/Port here; mobile hides this whole column via CSS -->
-                  <td>
+                  <td class="nowrap-cell">
                     ${addr}
                     <button
                       class="copy-btn"
