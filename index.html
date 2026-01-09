@@ -248,42 +248,43 @@
         const table = document.getElementById("servers");
         const empty = document.getElementById("empty");
 
-        fetch("https://jhstats.fly.dev/api/v1/tracker/online-players")
-            .then(r => r.json())
-            .then(({ servers }) => {
-                // flatten: one row per player
-                const rows = servers
-                    .filter(s => s.game_type === "COD2" && Array.isArray(s.players))
-                    .flatMap(s =>
-                        s.players.map(p => ({
-                            player_count: s.players.length,
-                            player: removeColors(removeColors(p.playername)),
-                            admin: p.admin,
-                            map: s.map,
-                            domain: s.domain,
-                            ip: s.ip,
-                            port: s.port
-                        }))
-                    )
-                    .sort((a, b) => {
-                        if (b.player_count !== a.player_count) {
-                            return b.player_count - a.player_count;
-                        }
+        function fetchData() {
+            fetch("https://jhstats.fly.dev/api/v1/tracker/online-players")
+                .then(r => r.json())
+                .then(({ servers }) => {
+                    // flatten: one row per player
+                    const rows = servers
+                        .filter(s => s.game_type === "COD2" && Array.isArray(s.players))
+                        .flatMap(s =>
+                            s.players.map(p => ({
+                                player_count: s.players.length,
+                                player: removeColors(removeColors(p.playername)),
+                                admin: p.admin,
+                                map: s.map,
+                                domain: s.domain,
+                                ip: s.ip,
+                                port: s.port
+                            }))
+                        )
+                        .sort((a, b) => {
+                            if (b.player_count !== a.player_count) {
+                                return b.player_count - a.player_count;
+                            }
 
-                        if (a.domain !== b.domain) {
-                            return a.domain.localeCompare(b.domain);
-                        }
+                            if (a.domain !== b.domain) {
+                                return a.domain.localeCompare(b.domain);
+                            }
 
-                        if (b.admin !== a.admin) {
-                            return b.admin - a.admin;
-                        }
+                            if (b.admin !== a.admin) {
+                                return b.admin - a.admin;
+                            }
 
-                        return a.player.localeCompare(b.player);
-                    });
+                            return a.player.localeCompare(b.player);
+                        });
 
-                if (!rows.length) {
-                    empty.style.display = "block";
-                    table.innerHTML = `
+                    if (!rows.length) {
+                        empty.style.display = "block";
+                        table.innerHTML = `
             <thead>
               <tr>
                 <th>player</th>
@@ -295,10 +296,10 @@
             </thead>
             <tbody></tbody>
           `;
-                    return;
-                }
+                        return;
+                    }
 
-                table.innerHTML = `
+                    table.innerHTML = `
           <thead>
             <tr>
               <th>player</th>
@@ -310,8 +311,8 @@
           </thead>
           <tbody>
             ${rows.map((r, idx) => {
-                    const addr = `${escapeHtml(r.ip)}:${r.port}`;
-                    return `
+                        const addr = `${escapeHtml(r.ip)}:${r.port}`;
+                        return `
                 <tr>
                   <td>${escapeHtml(r.player) + " (" + r.admin + ")"}</td>
                   <td>${escapeHtml(r.map)}</td>
@@ -349,14 +350,30 @@
                   </td>
                 </tr>
               `;
-                }).join("")}
+                    }).join("")}
           </tbody>
         `;
-            })
-            .catch(err => {
-                console.error(err);
-                table.outerHTML = `<div class="empty">Failed to load players.</div>`;
-            });
+                })
+                .catch(err => {
+                    console.error(err);
+                    table.outerHTML = `<div class="empty">Failed to load players.</div>`;
+                });
+        }
+
+        // Check for refresh parameter in URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const refreshInterval = urlParams.get('refresh');
+
+        // Initial fetch
+        fetchData();
+
+        // Auto-refresh only if refresh parameter is set
+        if (refreshInterval) {
+            const interval = parseInt(refreshInterval, 10);
+            if (!isNaN(interval) && interval > 0) {
+                setInterval(fetchData, interval * 1000);
+            }
+        }
 
         function escapeHtml(str) {
             return String(str).replace(/[&<>"']/g, m => ({
