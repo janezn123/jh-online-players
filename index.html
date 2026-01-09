@@ -269,16 +269,19 @@
                         }))
                     )
                     .sort((a, b) => {
-                        // players playing together at the top
-                        const countDiff = (b.player_count ?? 0) - (a.player_count ?? 0);
-                        if (countDiff !== 0) return countDiff;
+                        if (b.player_count !== a.player_count) {
+                            return b.player_count - a.player_count;
+                        }
 
-                        // so that servers are together
-                        const srvAndPlayerNameA = a.domain + a.player;
-                        const srvAndPlayerNameB = b.domain + b.player;
+                        if (a.domain !== b.domain) {
+                            return a.domain.localeCompare(b.domain);
+                        }
 
-                        // sort within server by player name
-                        return srvAndPlayerNameA.localeCompare(srvAndPlayerNameB, undefined, { sensitivity: "base" });
+                        if (b.admin !== a.admin) {
+                            return b.admin - a.admin;
+                        }
+
+                        return a.player.localeCompare(b.player);
                     });
 
                 if (!rows.length) {
