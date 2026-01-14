@@ -50,12 +50,171 @@
             padding: 10px;
             border-bottom: 1px solid var(--border);
             background: rgba(2, 6, 23, .35);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
         h1 {
             margin: 0;
             font-size: 20px;
             color: var(--text-strong);
+        }
+
+        .menu-container {
+            position: relative;
+        }
+
+        .hamburger {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            border-radius: 6px;
+            transition: background .15s ease;
+        }
+
+        .hamburger:hover {
+            background: rgba(147, 197, 253, .15);
+        }
+
+        .hamburger span {
+            display: block;
+            width: 24px;
+            height: 2px;
+            background: var(--text);
+            border-radius: 2px;
+            transition: all .2s ease;
+        }
+
+        .menu-dropdown {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 8px;
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, .4);
+            min-width: 200px;
+            padding: 8px 0;
+            display: none;
+            z-index: 100;
+        }
+
+        .menu-dropdown.show {
+            display: block;
+        }
+
+        .menu-item {
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            transition: background .15s ease;
+            user-select: none;
+        }
+
+        .menu-item:hover {
+            background: rgba(147, 197, 253, .1);
+        }
+
+        .menu-label {
+            font-size: 14px;
+            color: var(--text);
+        }
+
+        .menu-status {
+            font-size: 12px;
+            color: var(--muted);
+            margin-left: 12px;
+        }
+
+        .menu-status.enabled {
+            color: #22c55e;
+        }
+
+        /* Toggle switch */
+        .toggle-switch {
+            position: relative;
+            width: 44px;
+            height: 24px;
+            background: var(--border);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background .2s ease;
+        }
+
+        .toggle-switch.enabled {
+            background: rgba(34, 197, 94, .4);
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            background: var(--text);
+            border-radius: 50%;
+            transition: transform .2s ease;
+        }
+
+        .toggle-switch.enabled::after {
+            transform: translateX(20px);
+            background: #22c55e;
+        }
+
+        .refresh-info {
+            padding: 8px 16px;
+            font-size: 12px;
+            color: var(--muted);
+            border-top: 1px solid var(--border);
+            margin-top: 4px;
+            display: none;
+        }
+
+        .refresh-info.visible {
+            display: block;
+        }
+
+        .refresh-input-group {
+            padding: 8px 16px;
+            display: none;
+            align-items: center;
+            gap: 8px;
+            border-top: 1px solid var(--border);
+            margin-top: 4px;
+        }
+
+        .refresh-input-group.visible {
+            display: flex;
+        }
+
+        .refresh-input {
+            width: 70px;
+            padding: 6px 8px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: rgba(2, 6, 23, .3);
+            color: var(--text);
+            font-size: 13px;
+            font-family: inherit;
+        }
+
+        .refresh-input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .refresh-input-label {
+            font-size: 13px;
+            color: var(--muted);
         }
 
         .table-wrap {
@@ -233,6 +392,25 @@
         <div class="card">
             <header>
                 <h1>JumpersHeaven | Online Players</h1>
+                <div class="menu-container">
+                    <button class="hamburger" id="hamburgerBtn" aria-label="Menu">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </button>
+                    <div class="menu-dropdown" id="menuDropdown">
+                        <div class="menu-item" id="autoRefreshToggle">
+                            <span class="menu-label">Auto Refresh</span>
+                            <div class="toggle-switch" id="toggleSwitch"></div>
+                        </div>
+                        <div class="refresh-info" id="refreshInfo">Refresh: Off</div>
+                        <div class="refresh-input-group">
+                            <input type="number" id="refreshInput" class="refresh-input" value="60" min="5" max="600"
+                                step="5">
+                            <span class="refresh-input-label">seconds (min: 5, max: 600)</span>
+                        </div>
+                    </div>
+                </div>
             </header>
 
             <div class="table-wrap">
@@ -360,20 +538,110 @@
                 });
         }
 
-        // Check for refresh parameter in URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const refreshInterval = urlParams.get('refresh');
+        // Auto-refresh state
+        const DEFAULT_REFRESH_INTERVAL = 60; // seconds
+        const MIN_REFRESH_INTERVAL = 5;
+        const MAX_REFRESH_INTERVAL = 600;
+        let autoRefreshEnabled = false;
+        let refreshTimerId = null;
+        let refreshInterval = DEFAULT_REFRESH_INTERVAL;
+
+        // Menu elements
+        const hamburgerBtn = document.getElementById('hamburgerBtn');
+        const menuDropdown = document.getElementById('menuDropdown');
+        const autoRefreshToggle = document.getElementById('autoRefreshToggle');
+        const toggleSwitch = document.getElementById('toggleSwitch');
+        const refreshInfo = document.getElementById('refreshInfo');
+        const refreshInput = document.getElementById('refreshInput');
+
+        // Toggle menu dropdown
+        hamburgerBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            menuDropdown.classList.toggle('show');
+        });
+
+        // Close menu when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!menuDropdown.contains(e.target) && !hamburgerBtn.contains(e.target)) {
+                menuDropdown.classList.remove('show');
+            }
+        });
+
+        // Handle custom refresh interval input
+        refreshInput.addEventListener('change', () => {
+            let value = parseInt(refreshInput.value, 10);
+            // Clamp value between min and max
+            if (isNaN(value) || value < MIN_REFRESH_INTERVAL) {
+                value = MIN_REFRESH_INTERVAL;
+            } else if (value > MAX_REFRESH_INTERVAL) {
+                value = MAX_REFRESH_INTERVAL;
+            }
+            refreshInput.value = value;
+            refreshInterval = value;
+            // Save to localStorage
+            localStorage.setItem('refreshInterval', value.toString());
+            // If auto-refresh is enabled, restart with new interval
+            if (autoRefreshEnabled) {
+                updateAutoRefresh();
+            }
+        });
+
+        // Prevent menu from closing when clicking in the input
+        refreshInput.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+
+        // Toggle auto-refresh
+        autoRefreshToggle.addEventListener('click', () => {
+            autoRefreshEnabled = !autoRefreshEnabled;
+            updateAutoRefresh();
+        });
+
+        function updateAutoRefresh() {
+            // Clear existing timer
+            if (refreshTimerId) {
+                clearInterval(refreshTimerId);
+                refreshTimerId = null;
+            }
+
+            // Update UI
+            if (autoRefreshEnabled) {
+                toggleSwitch.classList.add('enabled');
+                refreshInfo.textContent = `Refresh: Every ${refreshInterval}s`;
+                refreshInfo.classList.add('visible');
+                refreshInput.closest('.refresh-input-group').classList.add('visible');
+                // Start new timer
+                refreshTimerId = setInterval(fetchData, refreshInterval * 1000);
+                // Save to localStorage
+                localStorage.setItem('autoRefresh', 'true');
+            } else {
+                toggleSwitch.classList.remove('enabled');
+                refreshInfo.textContent = 'Refresh: Off';
+                refreshInfo.classList.remove('visible');
+                refreshInput.closest('.refresh-input-group').classList.remove('visible');
+                localStorage.setItem('autoRefresh', 'false');
+            }
+        }
+
+        // Load saved preferences
+        const savedAutoRefresh = localStorage.getItem('autoRefresh');
+        const savedRefreshInterval = localStorage.getItem('refreshInterval');
+
+        if (savedRefreshInterval) {
+            const savedInterval = parseInt(savedRefreshInterval, 10);
+            if (!isNaN(savedInterval) && savedInterval >= MIN_REFRESH_INTERVAL && savedInterval <= MAX_REFRESH_INTERVAL) {
+                refreshInterval = savedInterval;
+                refreshInput.value = savedInterval;
+            }
+        }
+
+        if (savedAutoRefresh === 'true') {
+            autoRefreshEnabled = true;
+            updateAutoRefresh();
+        }
 
         // Initial fetch
         fetchData();
-
-        // Auto-refresh only if refresh parameter is set
-        if (refreshInterval) {
-            const interval = parseInt(refreshInterval, 10);
-            if (!isNaN(interval) && interval > 0) {
-                setInterval(fetchData, interval * 1000);
-            }
-        }
 
         function escapeHtml(str) {
             return String(str).replace(/[&<>"']/g, m => ({
