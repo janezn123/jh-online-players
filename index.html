@@ -220,19 +220,19 @@
             overflow-x: auto;
         }
 
-        .server-table {
+        .player-table {
             width: 100%;
             border-collapse: collapse;
             font-size: 14px;
         }
 
-        .server-table thead {
+        .player-table thead {
             background: rgba(2, 6, 23, .55);
             position: sticky;
             top: 0;
         }
 
-        .server-table th {
+        .player-table th {
             text-align: left;
             font-size: 12px;
             text-transform: uppercase;
@@ -245,32 +245,32 @@
             padding-right: 14px;
         }
 
-        .server-table th:nth-child(1) {
+        .player-table th:nth-child(1) {
             padding: 6px 0px 6px 14px;
         }
 
-        .server-table td:nth-child(1) {
+        .player-table td:nth-child(1) {
             padding: 6px 0px 6px 14px;
         }
 
-        .server-table td {
+        .player-table td {
             padding: 6px 0px;
             border-top: 1px solid var(--border);
         }
 
-        .server-table tbody tr:nth-child(even) {
+        .player-table tbody tr:nth-child(even) {
             background: rgba(2, 6, 23, .25);
         }
 
-        .server-table tbody tr:hover {
+        .player-table tbody tr:hover {
             background: rgba(2, 6, 23, .45);
         }
 
-        .server-table td:first-child {
+        .player-table td:first-child {
             color: var(--text-strong);
         }
 
-        .server-table td:last-child {
+        .player-table td:last-child {
             color: var(--accent);
         }
 
@@ -352,8 +352,8 @@
             border-color: rgba(147, 197, 253, .4);
         }
 
-        .server-table td:nth-child(1),
-        .server-table td:nth-child(2) {
+        .player-table td:nth-child(1),
+        .player-table td:nth-child(2) {
             white-space: normal;
             /* allow wrapping */
             overflow-wrap: anywhere;
@@ -371,7 +371,7 @@
                 margin: 20px auto;
             }
 
-            .server-table {
+            .player-table {
                 font-size: 14px;
             }
 
@@ -413,123 +413,108 @@
             </header>
 
             <div class="table-wrap">
-                <table id="servers" class="server-table"></table>
+                <table id="players" class="player-table">
+                    <thead>
+                        <tr>
+                            <th>player</th>
+                            <th>map</th>
+                            <th class="flag">server</th>
+                            <th class="details-col"></th>
+                            <th class="ip-port">ip / port</th>
+                        </tr>
+                    </thead>
+                    <tbody id="players-body">
+                    </tbody>
+                </table>
                 <div id="empty" class="empty" style="display:none;">
-                    No COD2 players online.
+                    No players online.
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        const table = document.getElementById("servers");
+        const table = document.getElementById("players");
+        const body = document.getElementById("players-body");
         const empty = document.getElementById("empty");
+        const tableHeader = ``;
+
+        function playerToHtmlRow(player, index) {
+            const serverEndpoint = `${escapeHtml(player.ip)}:${player.port}`;
+            return `<tr>
+                        <td>${escapeHtml(player.player) + " (" + player.admin + ")"}</td>
+                        <td>${escapeHtml(player.map)}</td>
+                        <td class="country-td">${flagFromDomain(player.domain)}</td>
+                        <td class="details-col" style="padding-right: 10px">
+                            <button class="more-btn" data-toggle="${index}">Details</button>
+                        </td>
+                        <td class="nowrap-cell ip-port">
+                        ${serverEndpoint}
+                        <button class="copy-btn" data-copy="${serverEndpoint}" title="Copy server address">Copy</button>
+                        </td>
+                    </tr>
+                    <!-- Mobile "details" row (hidden by default) -->
+                    <tr class="details-row" data-details-for="${index}" style="display:none;">
+                        <td colspan="3">
+                        <div class="details">
+                            <div>
+                            <div style="font-size:12px; color: var(--muted); margin-bottom:4px;">IP / Port</div>
+                            <code>${serverEndpoint}</code>
+                            </div>
+                            <button
+                            class="copy-btn"
+                            data-copy="${serverEndpoint}"
+                            title="Copy server address"
+                            >Copy</button>
+                        </div>
+                        </td>
+                    </tr>`;
+        }
+
+        function showPlayers(players) {
+            const anyPlayerOnline = players.length > 0;
+            empty.style.display = anyPlayerOnline ? "none" : "block"
+            body.innerHTML = players.map((player, index) => playerToHtmlRow(player, index))
+                .join("");
+        }
+
+        function getPlayersFromServers(servers) {
+            return servers.filter(s => s.game_type === "COD2" && Array.isArray(s.players))
+                .flatMap(s =>
+                    s.players.map(p => ({
+                        player_count: s.players.length,
+                        player: removeColors(removeColors(p.playername)),
+                        admin: p.admin,
+                        map: s.map,
+                        domain: s.domain,
+                        ip: s.ip,
+                        port: s.port
+                    }))
+                )
+                .sort((a, b) => {
+                    if (b.player_count !== a.player_count) {
+                        return b.player_count - a.player_count;
+                    }
+
+                    if (a.domain !== b.domain) {
+                        return a.domain.localeCompare(b.domain);
+                    }
+
+                    if (b.admin !== a.admin) {
+                        return b.admin - a.admin;
+                    }
+
+                    return a.player.localeCompare(b.player);
+                });
+
+        }
 
         function fetchData() {
             fetch("https://jhstats.fly.dev/api/v1/tracker/online-players")
                 .then(r => r.json())
                 .then(({ servers }) => {
-                    // flatten: one row per player
-                    const rows = servers
-                        .filter(s => s.game_type === "COD2" && Array.isArray(s.players))
-                        .flatMap(s =>
-                            s.players.map(p => ({
-                                player_count: s.players.length,
-                                player: removeColors(removeColors(p.playername)),
-                                admin: p.admin,
-                                map: s.map,
-                                domain: s.domain,
-                                ip: s.ip,
-                                port: s.port
-                            }))
-                        )
-                        .sort((a, b) => {
-                            if (b.player_count !== a.player_count) {
-                                return b.player_count - a.player_count;
-                            }
-
-                            if (a.domain !== b.domain) {
-                                return a.domain.localeCompare(b.domain);
-                            }
-
-                            if (b.admin !== a.admin) {
-                                return b.admin - a.admin;
-                            }
-
-                            return a.player.localeCompare(b.player);
-                        });
-
-                    if (!rows.length) {
-                        empty.style.display = "block";
-                        table.innerHTML = `
-            <thead>
-              <tr>
-                <th>player</th>
-                <th>map</th>
-                <th class="flag">server</th>
-                <th class="details-col"></th>
-                <th class="ip-port">ip / port</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          `;
-                        return;
-                    }
-
-                    table.innerHTML = `
-          <thead>
-            <tr>
-              <th>player</th>
-              <th>map</th>
-              <th class="flag">server</th>
-              <th class="details-col"></th>
-              <th class="ip-port">ip / port</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${rows.map((r, idx) => {
-                        const addr = `${escapeHtml(r.ip)}:${r.port}`;
-                        return `
-                <tr>
-                  <td>${escapeHtml(r.player) + " (" + r.admin + ")"}</td>
-                  <td>${escapeHtml(r.map)}</td>
-                  <td class="country-td">
-                    ${flagFromDomain(r.domain)}
-                  </td>
-                  <td class="details-col" style="padding-right: 10px">
-                    <button class="more-btn" data-toggle="${idx}">Details</button>
-                  </td>
-                  <!-- Desktop shows IP/Port here; mobile hides this whole column via CSS -->
-                  <td class="nowrap-cell ip-port">
-                    ${addr}
-                    <button
-                      class="copy-btn"
-                      data-copy="${addr}"
-                      title="Copy server address"
-                    >Copy</button>
-                  </td>
-                </tr>
-
-                <!-- Mobile "details" row (hidden by default) -->
-                <tr class="details-row" data-details-for="${idx}" style="display:none;">
-                  <td colspan="3">
-                    <div class="details">
-                      <div>
-                        <div style="font-size:12px; color: var(--muted); margin-bottom:4px;">IP / Port</div>
-                        <code>${addr}</code>
-                      </div>
-                      <button
-                        class="copy-btn"
-                        data-copy="${addr}"
-                        title="Copy server address"
-                      >Copy</button>
-                    </div>
-                  </td>
-                </tr>
-              `;
-                    }).join("")}
-          </tbody>
-        `;
+                    const players = getPlayersFromServers(servers);
+                    showPlayers(players);
                 })
                 .catch(err => {
                     console.error(err);
